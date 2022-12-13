@@ -1,0 +1,37 @@
+version: 0.2
+env:
+  shell: bash
+phases:
+  pre_build:
+    commands:
+      - echo "+++++++++++ Checking if NAT gateway has been deployed already +++++++++++"
+      - |
+        command=$(aws ec2 describe-nat-gateways --filter "Name=state,Values=available" --query "NatGateways[].NatGatewayId" --output text)
+        print_plus(){
+          printf '+%.0s' {1..51}
+          echo -e "\n"
+        }
+        if [[ -n $command ]]; then
+          print_plus
+          echo "NAT gateway is available; Not deploying a new one"
+          print_plus
+        else
+          print_plus
+          echo "NAT gateway is not available; Deploying a new one"
+          print_plus
+          aws ec2 create-nat-gateway --subnet-id $subnet_id_for_NATgw --allocation-id $eip_alloc_id --tag-specifications 'ResourceType=natgateway, Tags=[{Key=Name,Value=NATGWforcodebuild}]'
+          natgw_availability="pending"
+          echo "Waiting for NAT GW to be available"
+          while [ "$natgw_availability" != "available" ]
+          do
+            sleep 10
+            echo "Status is still pending; sleeping for 10 seconds..."
+            natgw_availability=$(aws ec2 describe-nat-gateways --filter "Name=state,Values=available" --query "NatGateways[].State" --output text)
+            if [[ "$natgw_availability" == "available" ]]; then
+              echo "Status is now available; proceeding to next steps"
+              break
+            fi
+          done
+          NATGATEWAY_ID=$(aws ec2 describe-nat-gateways --filter "Name=state,Values=available"  --query "NatGateways[].NatGatewayId" --output text)
+          aws ec2 create-route --route-table-id  $route_table_id --destination-cidr-block 0.0.0.0/0 --gateway-id $NATGATEWAY_ID
+        fi

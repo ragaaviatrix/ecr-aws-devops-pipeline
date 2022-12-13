@@ -1,0 +1,10 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - NATGATEWAY_ID=$(aws ec2 describe-nat-gateways --filter "Name=state,Values=available"  --query "NatGateways[].NatGatewayId" --output text)
+  
+  build:
+    commands:
+      - aws ec2 delete-nat-gateway --nat-gateway-id $NATGATEWAY_ID
+      - aws ec2 delete-route --route-table-id $route_table_id --destination-cidr-block 0.0.0.0/0

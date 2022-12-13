@@ -1,0 +1,14 @@
+version: 0.2
+env:
+  secrets-manager:
+    AVIATRIX_CONTROLLER_IP: controller_ip:AVIATRIX_CONTROLLER_IP
+    AVIATRIX_PASSWORD: controller_password:AVIATRIX_PASSWORD
+phases:
+  pre_build:
+    commands:
+      - terraform init
+      - terraform validate
+  
+  build:
+    commands:
+      - terraform plan
